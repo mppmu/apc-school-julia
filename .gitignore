@@ -6,3 +6,6 @@ Manifest-v*.toml
 
 snapshots
 report*.*
+
+run_c_model.c 
+run_c_model
