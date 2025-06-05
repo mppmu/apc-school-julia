@@ -13,7 +13,7 @@ using Plots
 using LazyReports
 using JLD2
 
-
+include("snapshotting.jl")
 
 # Simulating detector with fields 
 
@@ -30,14 +30,7 @@ function build_detsim(::Type{T}, example_geometry::Symbol) where T<:Real
     return detsim
 end
 
-if isfile("snapshots/detsim.jld2")
-    @info "Loading detector simulation from file."
-    detsim = JLD2.load("snapshots/detsim.jld2", "obj")
-else
-    @info "Building detector simulation."
-    detsim = build_detsim(Float32, :InvertedCoax)
-    JLD2.save("snapshots/detsim.jld2", "obj", detsim)
-end
+@snapshot detsim = build_detsim(Float32, :InvertedCoax)
 
 
 # Plot detector geometry
@@ -60,15 +53,10 @@ radsource = MonoenergeticSource(
 
 det_src_plt = plot!(deepcopy(det_plt), radsource)
 
-if isfile("snapshots/mctruth.jld2")
-    @info "Loading MC truth data from file"
-    mctruth = JLD2.load("snapshots/mctruth.jld2", "obj")
-else
-    @info "Running Geant4 simulation"
+@snapshot mctruth = let
     g4app = G4JLApplication(detsim, radsource, verbose = false);
     N_events = 30000
-    mctruth = run_geant4_simulation(g4app, N_events)
-    JLD2.save("snapshots/mctruth.jld2", "obj", mctruth)
+    run_geant4_simulation(g4app, N_events)
 end
 
 
@@ -94,9 +82,11 @@ mctruth_spec_plt = stephist(
 
 # Simulating waveforms
 
-sel_mctruth = mctruth[begin:begin+1000-1]
-wf_gen_tbl = simulate_waveforms(sel_mctruth, detsim, Δt = 1u"ns", max_nsteps = 2000)
-sim_wfs = add_baseline_and_extend_tail.(wf_gen_tbl.waveform, 10000, 20000)
+@snapshot sim_wfs = let 
+    sel_mctruth = mctruth[begin:begin+1000-1]
+    wf_gen_tbl = simulate_waveforms(sel_mctruth, detsim, Δt = 1u"ns", max_nsteps = 2000)
+    add_baseline_and_extend_tail.(wf_gen_tbl.waveform, 10000, 20000)
+end
 
 
 # DAQ response
