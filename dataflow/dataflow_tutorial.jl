@@ -30,8 +30,14 @@ function build_detsim(::Type{T}, example_geometry::Symbol) where T<:Real
     return detsim
 end
 
-detsim = build_detsim(Float32, :InvertedCoax)
-JLD2.save("snapshots/detsim.jld2", "obj", detsim)
+if isfile("snapshots/detsim.jld2")
+    @info "Loading detector simulation from file."
+    detsim = JLD2.load("snapshots/detsim.jld2", "obj")
+else
+    @info "Building detector simulation."
+    detsim = build_detsim(Float32, :InvertedCoax)
+    JLD2.save("snapshots/detsim.jld2", "obj", detsim)
+end
 
 
 # Plot detector geometry
@@ -54,9 +60,16 @@ radsource = MonoenergeticSource(
 
 det_src_plt = plot!(deepcopy(det_plt), radsource)
 
-g4app = G4JLApplication(detsim, radsource, verbose = false);
-N_events = 30000
-mctruth = run_geant4_simulation(g4app, N_events)
+if isfile("snapshots/mctruth.jld2")
+    @info "Loading MC truth data from file"
+    mctruth = JLD2.load("snapshots/mctruth.jld2", "obj")
+else
+    @info "Running Geant4 simulation"
+    g4app = G4JLApplication(detsim, radsource, verbose = false);
+    N_events = 30000
+    mctruth = run_geant4_simulation(g4app, N_events)
+    JLD2.save("snapshots/mctruth.jld2", "obj", mctruth)
+end
 
 
 # Plot generated hits
