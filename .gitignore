@@ -5,6 +5,7 @@ Manifest.toml
 Manifest-v*.toml
 
 snapshots
+scratchpad
 report*.*
 
 run_c_model.c 
